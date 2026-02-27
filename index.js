@@ -31,9 +31,14 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
   );
 
   if (!spotify) {
-    currentSong.isPlaying = false;
+    currentSong = {
+      ...currentSong,
+      isPlaying: false
+    };
     return;
   }
+
+  const albumName = spotify.assets?.largeText || null;
 
   const sameSong =
     currentSong.song === spotify.details &&
@@ -44,6 +49,7 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
       user: newPresence.user.username,
       song: spotify.details,
       artist: spotify.state,
+      album: albumName,
       isPlaying: true,
       updatedAt: Date.now()
     };
