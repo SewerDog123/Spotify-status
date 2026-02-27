@@ -40,6 +40,11 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
 
   const albumName = spotify.assets?.largeText || null;
 
+  const start = spotify.timestamps?.start || null;
+  const end = spotify.timestamps?.end || null;
+
+  const duration = start && end ? (end - start) / 1000 : null;
+
   const sameSong =
     currentSong.song === spotify.details &&
     currentSong.artist === spotify.state;
@@ -50,6 +55,9 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
       song: spotify.details,
       artist: spotify.state,
       album: albumName,
+      startTimestamp: start,
+      endTimestamp: end,
+      duration: duration,
       isPlaying: true,
       updatedAt: Date.now()
     };
