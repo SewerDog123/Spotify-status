@@ -48,6 +48,7 @@ app.get("/song", (req, res) => {
   res.json(currentSong);
 });
 
+console.log(process.env.token);
 app.listen(PORT, () => {
   console.log("API running on port", PORT);
 });
