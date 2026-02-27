@@ -53,3 +53,5 @@ app.listen(PORT, () => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+client.on("error", console.error);
+process.on("unhandledRejection", console.error);
