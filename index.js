@@ -31,13 +31,20 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
   );
 
   if (spotify) {
-  currentSong = {
-    user: newPresence.user.username,
-    song: spotify.details,
-    artist: spotify.state,
-    updatedAt: Date.now()
-  };
-}
+    currentSong = {
+      user: newPresence.user.username,
+      song: spotify.details,
+      artist: spotify.state,
+      isPlaying: true,
+      updatedAt: Date.now()
+    };
+  } else {
+    currentSong = {
+      ...currentSong,
+      isPlaying: false,
+      updatedAt: Date.now()
+    };
+  }
 });
 
 app.get("/", (req, res) => {
