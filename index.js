@@ -7,7 +7,8 @@ const PORT = process.env.PORT || 3000;
 let currentSong = {
   user: null,
   song: null,
-  artist: null
+  artist: null,
+  updatedAt: null
 };
 
 const client = new Client({
@@ -30,14 +31,13 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
   );
 
   if (spotify) {
-    currentSong = {
-      user: newPresence.user.username,
-      song: spotify.details,
-      artist: spotify.state
-    };
-
-    console.log("Updated:", currentSong);
-  }
+  currentSong = {
+    user: newPresence.user.username,
+    song: spotify.details,
+    artist: spotify.state,
+    updatedAt: Date.now()
+  };
+}
 });
 
 app.get("/", (req, res) => {
