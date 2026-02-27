@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, ActivityType } = require("discord.js");
 const express = require("express");
 
 const app = express();
@@ -11,9 +11,11 @@ let currentSong = {
   album: null,
   isPlaying: false,
   startedAt: null,
-  duration: null,
-  progress: null,
-  updatedAt: null
+  durationMs: null,
+  progressMs: null,
+  updatedAt: null,
+  lastKnownProgressMs: null,
+  lastProgressCheck: null
 };
 
 const client = new Client({
@@ -24,84 +26,118 @@ const client = new Client({
   ]
 });
 
-client.once("clientReady", () => {
-  console.log("Bot is online!");
+const STALE_THRESHOLD_MS = 1000 * 12;
+
+client.once("ready", () => {
+  console.log(`Bot is online — ${client.user.tag}`);
 });
 
 client.on("presenceUpdate", (oldPresence, newPresence) => {
-  if (!newPresence) return;
+  if (!newPresence?.user || newPresence.user.bot) return;
 
   const spotify = newPresence.activities.find(
-    a => a.name === "Spotify" && a.type === 2
+    act => act.name === "Spotify" && act.type === ActivityType.Listening
   );
 
-  if (!spotify) {
-    return;
-  }
-
-  const start = spotify.timestamps?.start ?? null;
-  const end = spotify.timestamps?.end ?? null;
   const now = Date.now();
 
-  const duration = start && end ? end - start : null;
-
-  if (end && now > end) {
-    currentSong.isPlaying = false;
+  if (!spotify) {
+    if (currentSong.isPlaying) {
+      console.log(`Stopped playing: ${currentSong.song || "(unknown)"}`);
+      currentSong.isPlaying = false;
+      currentSong.updatedAt = now;
+    }
     return;
   }
 
-  const albumName = spotify.assets?.largeText ?? null;
+  const { details, state, assets, timestamps } = spotify;
 
-  const sameSong =
-    currentSong.song === spotify.details &&
-    currentSong.artist === spotify.state;
+  if (!details || !state) return;
 
-  if (!sameSong) {
-    currentSong = {
-      user: newPresence.user.username,
-      song: spotify.details,
-      artist: spotify.state,
-      album: albumName,
-      isPlaying: true,
-      startedAt: start,
-      duration,
-      progress: now - start,
-      updatedAt: Date.now()
-    };
+  const songChanged =
+    currentSong.song !== details ||
+    currentSong.artist !== state ||
+    currentSong.album !== (assets?.largeText ?? null);
 
-    console.log("Changed:", currentSong.song);
-  } else {
-    currentSong.isPlaying = true;
+  const startMs = timestamps?.start ?? null;
+  const endMs = timestamps?.end ?? null;
+  const durationMs = startMs && endMs ? endMs - startMs : null;
+
+  currentSong = {
+    user: newPresence.user.username,
+    song: details,
+    artist: state,
+    album: assets?.largeText ?? null,
+    isPlaying: true,
+    startedAt: startMs,
+    durationMs,
+    progressMs: startMs ? now - startMs : 0,
+    updatedAt: now,
+    lastKnownProgressMs: startMs ? now - startMs : null,
+    lastProgressCheck: now
+  };
+
+  if (songChanged) {
+    console.log(`Now playing: ${currentSong.song} - ${currentSong.artist}`);
   }
-});
-
-app.get("/", (req, res) => {
-  res.send("Spotify Status API Running");
 });
 
 app.get("/song", (req, res) => {
-  if (currentSong.startedAt) {
-    const now = Date.now();
-    const newProgress = now - currentSong.startedAt;
+  const now = Date.now();
 
-    if (Math.abs(newProgress - lastProgress) < 1000) {
-      if (now - lastProgressCheck > 5000) {
-        currentSong.isPlaying = false;
-      }
-    } else {
-      currentSong.isPlaying = true;
-      lastProgressCheck = now;
-    }
-
-    lastProgress = newProgress;
-    currentSong.progress = newProgress;
+  if (
+    currentSong.isPlaying &&
+    currentSong.updatedAt &&
+    now - currentSong.updatedAt > STALE_THRESHOLD_MS
+  ) {
+    console.log("Marked as stopped (presence update timed out)");
+    currentSong.isPlaying = false;
   }
 
-  res.json(currentSong);
+  if (currentSong.isPlaying && currentSong.startedAt) {
+    const calculatedProgress = now - currentSong.startedAt;
+
+    if (
+      currentSong.lastKnownProgressMs &&
+      calculatedProgress < currentSong.lastKnownProgressMs - 1500
+    ) {
+      currentSong.isPlaying = false;
+      console.log("Detected possible song change or seek backward");
+    } else {
+      currentSong.progressMs = calculatedProgress;
+      currentSong.lastKnownProgressMs = calculatedProgress;
+      currentSong.lastProgressCheck = now;
+    }
+
+    if (currentSong.durationMs && calculatedProgress > currentSong.durationMs + 2000) {
+      currentSong.isPlaying = false;
+      console.log("Song duration exceeded → marked as stopped");
+    }
+  }
+
+  res.json({
+    ...currentSong,
+    progressPercent:
+      currentSong.durationMs && currentSong.progressMs
+        ? Math.min(100, (currentSong.progressMs / currentSong.durationMs) * 100)
+        : null
+  });
 });
+
+app.get("/", (req, res) => {
+  res.send("Spotify Status API — Running");
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Promise Rejection:", err);
+});
+
+client.login(process.env.TOKEN || process.env.token)
+  .catch(err => {
+    console.error("Login failed:", err);
+    process.exit(1);
+  });
 
 app.listen(PORT, () => {
-  console.log("API running on port", PORT);
+  console.log(`API server running on port ${PORT}`);
 });
-
-client.login(process.env.token);
