@@ -48,4 +48,4 @@ app.listen(PORT, () => {
   console.log("API running on port", PORT);
 });
 
-client.login("MTQ3Njg3OTc5OTY3ODE0NDU5NQ.GwxBS1.6rDXBw7yYjw1r4_U3Z4T5iicBsXK-q-c4LjTGU");
+client.login(process.env.DISCORD_TOKEN);
