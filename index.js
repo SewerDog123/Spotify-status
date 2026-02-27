@@ -40,6 +40,10 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
   }
 });
 
+app.get("/", (req, res) => {
+  res.send("Spotify Status API is running!");
+});
+
 app.get("/song", (req, res) => {
   res.json(currentSong);
 });
