@@ -31,9 +31,13 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
   );
 
   if (!spotify) {
+  setTimeout(() => {
+    if (!currentSong.isPlaying) return;
     currentSong.isPlaying = false;
-    return;
-  }
+  }, 3000);
+
+  return;
+}
 
   const start = spotify.timestamps?.start ?? null;
   const end = spotify.timestamps?.end ?? null;
