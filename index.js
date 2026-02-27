@@ -31,14 +31,17 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
   );
 
   if (!spotify) {
-    currentSong = {
-      ...currentSong,
-      isPlaying: false
-    };
+    currentSong.isPlaying = false;
     return;
   }
 
-  const albumName = spotify.assets?.largeText || null;
+  const start = spotify.timestamps?.start ?? null;
+  const end = spotify.timestamps?.end ?? null;
+
+  const duration = start && end ? end - start : null;
+  const progress = start ? Date.now() - start : null;
+
+  const albumName = spotify.assets?.largeText ?? null;
 
   const sameSong =
     currentSong.song === spotify.details &&
@@ -51,6 +54,9 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
       artist: spotify.state,
       album: albumName,
       isPlaying: true,
+      duration,
+      progress,
+      startedAt: start,
       updatedAt: Date.now()
     };
   } else {
