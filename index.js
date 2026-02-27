@@ -8,6 +8,11 @@ let currentSong = {
   user: null,
   song: null,
   artist: null,
+  album: null,
+  isPlaying: false,
+  startedAt: null,
+  duration: null,
+  progress: null,
   updatedAt: null
 };
 
@@ -31,19 +36,19 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
   );
 
   if (!spotify) {
-  setTimeout(() => {
-    if (!currentSong.isPlaying) return;
-    currentSong.isPlaying = false;
-  }, 3000);
-
-  return;
-}
+    return;
+  }
 
   const start = spotify.timestamps?.start ?? null;
   const end = spotify.timestamps?.end ?? null;
+  const now = Date.now();
 
   const duration = start && end ? end - start : null;
-  const progress = start ? Date.now() - start : null;
+
+  if (end && now > end) {
+    currentSong.isPlaying = false;
+    return;
+  }
 
   const albumName = spotify.assets?.largeText ?? null;
 
@@ -58,25 +63,35 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
       artist: spotify.state,
       album: albumName,
       isPlaying: true,
-      duration,
-      progress,
       startedAt: start,
+      duration,
+      progress: now - start,
       updatedAt: Date.now()
     };
+
+    console.log("Changed:", currentSong.song);
   } else {
     currentSong.isPlaying = true;
   }
 });
 
 app.get("/", (req, res) => {
-  res.send("Spotify Status API is running!");
+  res.send("Spotify Status API Running");
 });
 
 app.get("/song", (req, res) => {
+  if (currentSong.startedAt && currentSong.isPlaying) {
+    currentSong.progress = Date.now() - currentSong.startedAt;
+
+    if (currentSong.duration && currentSong.progress > currentSong.duration) {
+      currentSong.progress = currentSong.duration;
+      currentSong.isPlaying = false;
+    }
+  }
+
   res.json(currentSong);
 });
 
-console.log(process.env.token);
 app.listen(PORT, () => {
   console.log("API running on port", PORT);
 });
