@@ -30,7 +30,16 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
     a => a.name === "Spotify" && a.type === 2
   );
 
-  if (spotify) {
+  if (!spotify) {
+    currentSong.isPlaying = false;
+    return;
+  }
+
+  const sameSong =
+    currentSong.song === spotify.details &&
+    currentSong.artist === spotify.state;
+
+  if (!sameSong) {
     currentSong = {
       user: newPresence.user.username,
       song: spotify.details,
@@ -39,11 +48,7 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
       updatedAt: Date.now()
     };
   } else {
-    currentSong = {
-      ...currentSong,
-      isPlaying: false,
-      updatedAt: Date.now()
-    };
+    currentSong.isPlaying = true;
   }
 });
 
