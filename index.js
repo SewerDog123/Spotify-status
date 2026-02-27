@@ -52,6 +52,4 @@ app.listen(PORT, () => {
   console.log("API running on port", PORT);
 });
 
-client.login(process.env.DISCORD_TOKEN);
-client.on("error", console.error);
-process.on("unhandledRejection", console.error);
+client.login(process.env.token);
