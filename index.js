@@ -80,13 +80,21 @@ app.get("/", (req, res) => {
 });
 
 app.get("/song", (req, res) => {
-  if (currentSong.startedAt && currentSong.isPlaying) {
-    currentSong.progress = Date.now() - currentSong.startedAt;
+  if (currentSong.startedAt) {
+    const now = Date.now();
+    const newProgress = now - currentSong.startedAt;
 
-    if (currentSong.duration && currentSong.progress > currentSong.duration) {
-      currentSong.progress = currentSong.duration;
-      currentSong.isPlaying = false;
+    if (Math.abs(newProgress - lastProgress) < 1000) {
+      if (now - lastProgressCheck > 5000) {
+        currentSong.isPlaying = false;
+      }
+    } else {
+      currentSong.isPlaying = true;
+      lastProgressCheck = now;
     }
+
+    lastProgress = newProgress;
+    currentSong.progress = newProgress;
   }
 
   res.json(currentSong);
